@@ -13,18 +13,12 @@ import {
   Bar,
 } from "recharts";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { WorkoutLogRow } from "@/types";
 
 interface WeightRow {
   progress_date: string;
   weight_kg: number;
   strength_json: { bench?: number; squat?: number } | null;
-}
-
-interface WorkoutLogRow {
-  log_json: {
-    entries: Array<{ reps: number; sets?: number }>;
-    exercise?: { name?: string };
-  };
 }
 
 const groupVolume = (logs: WorkoutLogRow[]) => {

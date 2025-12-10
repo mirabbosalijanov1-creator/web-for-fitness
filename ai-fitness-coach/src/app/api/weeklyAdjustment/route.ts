@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requestWeeklyAdjustment } from "@/lib/ai/huggingface";
-import { WeeklyPlan } from "@/types";
+import { WeeklyPlan, WorkoutPlanRecord, WorkoutLogPayload } from "@/types";
 
 const difficultyWeights: Record<string, number> = {
   easy: -1,
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const inputLogs = body?.logs ?? [];
+  const inputLogs: WorkoutLogPayload["entries"] = body?.logs ?? [];
 
   const { data: storedLogs } = await supabase
     .from("workout_logs")
@@ -63,10 +63,9 @@ export async function POST(req: NextRequest) {
     .order("workout_date", { ascending: false })
     .limit(20);
 
-  const allLogs = [...inputLogs, ...(storedLogs ?? []).map((row) => row.log_json ?? [])].flat();
-  const difficulties = allLogs
-    .map((set: Record<string, unknown>) => String(set.difficulty ?? "medium"))
-    .filter(Boolean);
+  const storedEntries = (storedLogs ?? []).flatMap((row) => row.log_json?.entries ?? []);
+  const allEntries = [...inputLogs, ...storedEntries];
+  const difficulties = allEntries.map((set) => set.difficulty ?? "medium").filter(Boolean);
 
   const score = difficulties.reduce((acc, level) => acc + (difficultyWeights[level] ?? 0), 0);
   const volumeDelta = score <= -3 ? 1 : score >= 3 ? -1 : 0;
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .single<WorkoutPlanRecord>();
 
   if (planError || !planRecord?.plan_json) {
     return NextResponse.json({ error: "No plan found. Generate one first." }, { status: 400 });

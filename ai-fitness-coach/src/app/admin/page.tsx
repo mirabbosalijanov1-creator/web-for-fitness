@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/service";
 
 const isAdmin = (email: string | undefined | null) => {
   if (!email) return false;
@@ -13,6 +14,7 @@ const formatNumber = (value: number | null | undefined) =>
 
 export default async function AdminPage() {
   const supabase = createSupabaseServerClient(cookies());
+  const service = getServiceRoleClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,11 +25,11 @@ export default async function AdminPage() {
 
   const [{ count: totalUsers }, { count: totalLogs }, { data: streakRows }, { data: xpRows }, { data: goalRows }] =
     await Promise.all([
-      supabase.from("users").select("id", { head: true, count: "exact" }),
-      supabase.from("workout_logs").select("id", { head: true, count: "exact" }),
-      supabase.from("streaks").select("current_streak"),
-      supabase.from("xp").select("total_xp"),
-      supabase.from("user_profile").select("short_term_goal"),
+      service.from("users").select("id", { head: true, count: "exact" }),
+      service.from("workout_logs").select("id", { head: true, count: "exact" }),
+      service.from("streaks").select("current_streak"),
+      service.from("xp").select("total_xp"),
+      service.from("user_profile").select("short_term_goal"),
     ]);
 
   const avgStreak =

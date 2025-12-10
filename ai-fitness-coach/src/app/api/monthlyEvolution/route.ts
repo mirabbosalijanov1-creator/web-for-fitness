@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requestMonthlyEvolution } from "@/lib/ai/huggingface";
-import { WeeklyPlan } from "@/types";
+import { WeeklyPlan, WorkoutPlanRecord } from "@/types";
 
 const rotateExercises = (plan: WeeklyPlan): WeeklyPlan => {
   return {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single(),
+      .single<WorkoutPlanRecord>(),
     supabase
       .from("progress")
       .select("weight_kg, strength_json, progress_date")

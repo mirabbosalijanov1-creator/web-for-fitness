@@ -3,8 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { WorkoutLogPayload } from "@/types";
 
-const logSchema = z.object({
+const entrySchema = z.object({
+  set: z.number(),
+  reps: z.number(),
+  weight: z.number(),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+});
+
+const logSchema: z.ZodType<WorkoutLogPayload> = z.object({
   date: z.string(),
   workoutName: z.string().optional(),
   exercise: z
@@ -14,14 +22,7 @@ const logSchema = z.object({
       reps: z.string().optional(),
     })
     .optional(),
-  entries: z.array(
-    z.object({
-      set: z.number(),
-      reps: z.number(),
-      weight: z.number(),
-      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-    })
-  ),
+  entries: z.array(entrySchema),
 });
 
 const averageDifficulty = (entries: Array<{ difficulty: string }>) => {

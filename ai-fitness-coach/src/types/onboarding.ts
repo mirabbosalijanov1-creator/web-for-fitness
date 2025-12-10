@@ -66,3 +66,17 @@ export interface WorkoutDay {
 export interface WeeklyPlan {
   days: WorkoutDay[];
 }
+
+export interface WorkoutLogEntry {
+  set: number;
+  reps: number;
+  weight: number;
+  difficulty: "easy" | "medium" | "hard";
+}
+
+export interface WorkoutLogPayload {
+  date: string;
+  workoutName?: string;
+  exercise?: WorkoutExercise;
+  entries: WorkoutLogEntry[];
+}

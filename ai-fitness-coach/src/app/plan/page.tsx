@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { WeeklyPlanBoard } from "@/components/workouts/WeeklyPlanBoard";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { WeeklyPlan } from "@/types";
+import type { WeeklyPlan, WorkoutPlanRow } from "@/types";
 import { useToastStore } from "@/components/ui/Toast";
 
 type FetchState = "idle" | "loading" | "error" | "empty" | "success";
@@ -34,7 +34,7 @@ export default function PlanPage() {
       .select("plan_json")
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<WorkoutPlanRow>();
 
     if (planError) {
       console.error(planError);

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AvatarMetrics, OnboardingData, WeeklyPlan } from "@/types";
 import { StepIndicator } from "./StepIndicator";
 import { AvatarPreview } from "./AvatarPreview";
@@ -26,6 +27,7 @@ const initialState: OnboardingData = {
 };
 
 export const OnboardingWizard = () => {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [formState, setFormState] = useState<OnboardingData>(initialState);
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
@@ -101,7 +103,10 @@ export const OnboardingWizard = () => {
 
         setPlan(payload.plan ?? sampleWeeklyPlan);
         setStatus("success");
-        setMessage("Plan saved. Head to the plan or dashboard pages.");
+        setMessage("Plan saved. Redirecting to your weekly plan...");
+        setTimeout(() => {
+          router.push("/plan");
+        }, 800);
       } catch (error) {
         setStatus("error");
         setMessage((error as Error).message);

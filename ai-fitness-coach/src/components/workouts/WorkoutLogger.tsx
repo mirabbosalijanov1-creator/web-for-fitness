@@ -18,6 +18,12 @@ interface LoggedSet {
 export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
   const [entries, setEntries] = useState<LoggedSet[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [summary, setSummary] = useState<{
+    streak?: { current: number; longest: number };
+    level?: number;
+    xpGain?: number;
+  } | null>(null);
 
   const addSet = () => {
     setEntries((prev) => [
@@ -33,14 +39,39 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
   };
 
   const saveLog = async () => {
-    const response = await fetch("/api/workouts/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, exercise, entries }),
-    });
+    if (entries.length === 0) {
+      setMessage("Add at least one set before saving.");
+      return;
+    }
 
-    const payload = await response.json();
-    setMessage(payload.message ?? payload.error ?? "Saved");
+    setIsSaving(true);
+    setMessage(null);
+    setSummary(null);
+
+    try {
+      const response = await fetch("/api/workouts/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, exercise, entries }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to save workout");
+      }
+
+      setMessage(payload.message ?? "Workout completed");
+      setSummary({
+        streak: payload.streak,
+        level: payload.level,
+        xpGain: payload.xpGain,
+      });
+      setEntries([]);
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -54,6 +85,7 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
           type="button"
           onClick={addSet}
           className="rounded-full border border-white/20 px-3 py-1 text-xs"
+          disabled={isSaving}
         >
           Add set
         </button>
@@ -106,11 +138,21 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
       <button
         type="button"
         onClick={saveLog}
-        className="w-full rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-slate-950"
+        className="w-full rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50"
+        disabled={isSaving}
       >
-        Save workout log
+        {isSaving ? "Saving..." : "Save workout log"}
       </button>
-      {message && <p className="text-center text-xs text-slate-400">{message}</p>}
+      {message && (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center text-xs text-slate-100">
+          {message}
+          {summary?.streak && (
+            <p className="mt-1 text-emerald-300">
+              Streak: {summary.streak.current} days (longest {summary.streak.longest}). XP +{summary.xpGain ?? 0}, Level {summary.level}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

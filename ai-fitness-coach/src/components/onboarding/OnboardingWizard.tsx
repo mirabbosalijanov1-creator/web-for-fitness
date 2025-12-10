@@ -6,6 +6,7 @@ import { AvatarMetrics, OnboardingData, WeeklyPlan } from "@/types";
 import { StepIndicator } from "./StepIndicator";
 import { AvatarPreview } from "./AvatarPreview";
 import { sampleWeeklyPlan } from "@/data/samplePlan";
+import { useToastStore } from "@/components/ui/Toast";
 
 const totalSteps = 7;
 
@@ -37,6 +38,7 @@ export const OnboardingWizard = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoWarning, setPhotoWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const toast = useToastStore((state) => state.trigger);
 
   const handleNext = (event?: FormEvent) => {
     event?.preventDefault();
@@ -77,7 +79,13 @@ export const OnboardingWizard = () => {
 
     const payload = await response.json();
     if (!response.ok) {
-      setMessage(payload.error ?? "Failed to upload photo");
+      if (payload.error?.includes("Unauthorized") || response.status === 401) {
+        // defer toast to fetch to avoid hydration warning
+      } else {
+        const errMsg = payload.error ?? "Failed to upload photo";
+        setMessage(errMsg);
+        toast(errMsg, "error");
+      }
       return;
     }
 
@@ -85,7 +93,9 @@ export const OnboardingWizard = () => {
     handleChange("bodyPhoto", payload.path);
     setPhotoPreview(payload.signedUrl ?? null);
     setPhotoWarning(payload.warning ?? null);
-    setMessage(payload.warning ?? "Photo uploaded securely.");
+    const info = payload.warning ?? "Photo uploaded securely.";
+    setMessage(info);
+    toast(info, payload.warning ? "error" : "success");
   };
 
   const handleGenerate = () => {
@@ -107,13 +117,17 @@ export const OnboardingWizard = () => {
 
         setPlan(payload.plan ?? sampleWeeklyPlan);
         setStatus("success");
-        setMessage("Plan saved. Redirecting to your weekly plan...");
+        const successMessage = "Plan saved. Redirecting to your weekly plan...";
+        setMessage(successMessage);
+        toast(successMessage, "success");
         setTimeout(() => {
           router.push("/plan");
         }, 800);
       } catch (error) {
         setStatus("error");
-        setMessage((error as Error).message);
+        const errMsg = (error as Error).message;
+        setMessage(errMsg);
+        toast(errMsg, "error");
         setPlan(sampleWeeklyPlan);
       }
     });

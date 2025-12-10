@@ -5,6 +5,7 @@ import Link from "next/link";
 import { WeeklyPlanBoard } from "@/components/workouts/WeeklyPlanBoard";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { WeeklyPlan } from "@/types";
+import { useToastStore } from "@/components/ui/Toast";
 
 type FetchState = "idle" | "loading" | "error" | "empty" | "success";
 
@@ -22,6 +23,7 @@ export default function PlanPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const toast = useToastStore((state) => state.trigger);
 
   const fetchPlan = useCallback(async () => {
     setState("loading");
@@ -38,6 +40,7 @@ export default function PlanPage() {
       console.error(planError);
       setState("error");
       setError(planError.message);
+      toast(planError.message ?? "Unable to load plan", "error");
       return;
     }
 
@@ -66,9 +69,12 @@ export default function PlanPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Failed to generate plan");
+      toast("New plan generated", "success");
       setRefreshIndex((prev) => prev + 1);
     } catch (generateError) {
-      setError((generateError as Error).message);
+      const errMsg = (generateError as Error).message;
+      setError(errMsg);
+      toast(errMsg, "error");
       setState("error");
     } finally {
       setIsGenerating(false);

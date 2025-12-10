@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { WorkoutExercise } from "@/types";
+import { useToastStore } from "@/components/ui/Toast";
 
 interface WorkoutLoggerProps {
   date: string;
@@ -24,6 +25,7 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
     level?: number;
     xpGain?: number;
   } | null>(null);
+  const toast = useToastStore((state) => state.trigger);
 
   const addSet = () => {
     setEntries((prev) => [
@@ -40,7 +42,9 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
 
   const saveLog = async () => {
     if (entries.length === 0) {
-      setMessage("Add at least one set before saving.");
+      const warning = "Add at least one set before saving.";
+      setMessage(warning);
+      toast(warning, "error");
       return;
     }
 
@@ -60,7 +64,9 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
         throw new Error(payload.error ?? "Unable to save workout");
       }
 
-      setMessage(payload.message ?? "Workout completed");
+      const successMsg = payload.message ?? "Workout completed";
+      setMessage(successMsg);
+      toast(successMsg, "success");
       setSummary({
         streak: payload.streak,
         level: payload.level,
@@ -68,7 +74,9 @@ export const WorkoutLogger = ({ date, exercise }: WorkoutLoggerProps) => {
       });
       setEntries([]);
     } catch (error) {
-      setMessage((error as Error).message);
+      const errMsg = (error as Error).message;
+      setMessage(errMsg);
+      toast(errMsg, "error");
     } finally {
       setIsSaving(false);
     }

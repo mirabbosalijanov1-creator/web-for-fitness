@@ -19,6 +19,7 @@ export default function PlanPage() {
   const [state, setState] = useState<FetchState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [refreshIndex, setRefreshIndex] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
 
@@ -55,6 +56,25 @@ export default function PlanPage() {
 
   const handleRetry = () => setRefreshIndex((prev) => prev + 1);
 
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/generatePlan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Failed to generate plan");
+      setRefreshIndex((prev) => prev + 1);
+    } catch (generateError) {
+      setError((generateError as Error).message);
+      setState("error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -66,14 +86,24 @@ export default function PlanPage() {
             stored in Supabase JSON.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleRetry}
-          className="rounded-full border border-white/20 px-5 py-2 text-sm text-white transition hover:border-white/60 disabled:opacity-50"
-          disabled={state === "loading"}
-        >
-          {state === "loading" ? "Refreshing..." : "Refresh plan"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="rounded-full border border-white/20 px-5 py-2 text-sm text-white transition hover:border-white/60 disabled:opacity-50"
+            disabled={state === "loading" || isGenerating}
+          >
+            {state === "loading" ? "Refreshing..." : "Refresh plan"}
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
+            disabled={isGenerating}
+          >
+            {isGenerating ? "Generating..." : "Generate plan"}
+          </button>
+        </div>
       </div>
 
       {state === "loading" && (

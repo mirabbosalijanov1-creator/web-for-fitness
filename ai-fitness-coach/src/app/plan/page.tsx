@@ -1,6 +1,12 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { sampleWeeklyPlan } from "@/data/samplePlan";
 import { WeeklyPlanBoard } from "@/components/workouts/WeeklyPlanBoard";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { WeeklyPlan } from "@/types";
+
+type FetchState = "idle" | "loading" | "error" | "empty" | "success";
 
 const slugify = (value: string) =>
   value
@@ -9,6 +15,46 @@ const slugify = (value: string) =>
     .replace(/(^-|-$)/g, "");
 
 export default function PlanPage() {
+  const [plan, setPlan] = useState<WeeklyPlan | null>(null);
+  const [state, setState] = useState<FetchState>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+
+  const fetchPlan = useCallback(async () => {
+    setState("loading");
+    setError(null);
+
+    const { data, error: planError } = await supabase
+      .from("workout_plan")
+      .select("plan_json")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (planError) {
+      console.error(planError);
+      setState("error");
+      setError(planError.message);
+      return;
+    }
+
+    if (!data?.plan_json) {
+      setState("empty");
+      return;
+    }
+
+    setPlan(data.plan_json as WeeklyPlan);
+    setState("success");
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchPlan();
+  }, [fetchPlan, refreshIndex]);
+
+  const handleRetry = () => setRefreshIndex((prev) => prev + 1);
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -20,29 +66,81 @@ export default function PlanPage() {
             stored in Supabase JSON.
           </p>
         </div>
-        <Link
-          href="/onboarding"
-          className="rounded-full border border-white/20 px-5 py-2 text-sm"
+        <button
+          type="button"
+          onClick={handleRetry}
+          className="rounded-full border border-white/20 px-5 py-2 text-sm text-white transition hover:border-white/60 disabled:opacity-50"
+          disabled={state === "loading"}
         >
-          Regenerate plan
-        </Link>
+          {state === "loading" ? "Refreshing..." : "Refresh plan"}
+        </button>
       </div>
-      <div className="mt-10">
-        <WeeklyPlanBoard plan={sampleWeeklyPlan} />
-      </div>
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {sampleWeeklyPlan.days.map((day) => (
-          <Link
-            key={day.name}
-            href={`/workouts/${slugify(day.name)}`}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 transition hover:border-emerald-400"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">Log workout</p>
-            <p className="text-lg font-semibold text-white">{day.name}</p>
-            <p>{day.exercises.length} exercises</p>
-          </Link>
-        ))}
-      </div>
+
+      {state === "loading" && (
+        <div className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-300">
+          Fetching your plan...
+        </div>
+      )}
+
+      {state === "error" && (
+        <div className="mt-12 rounded-3xl border border-rose-400/40 bg-rose-500/10 p-8 text-center text-sm text-rose-200">
+          Could not load your plan: {error}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="rounded-full border border-rose-200/40 px-4 py-2 text-xs uppercase tracking-[0.2em]"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {state === "empty" && (
+        <div className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-300">
+          <p className="text-lg font-semibold text-white">No plan yet</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Complete onboarding or generate a plan to unlock your weekly schedule.
+          </p>
+          <div className="mt-4 flex flex-col items-center gap-3 md:flex-row md:justify-center">
+            <Link
+              href="/onboarding"
+              className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-slate-900"
+            >
+              Run onboarding wizard
+            </Link>
+            <button
+              type="button"
+              onClick={() => setRefreshIndex((prev) => prev + 1)}
+              className="rounded-full border border-white/20 px-5 py-2 text-sm text-white"
+            >
+              Check again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {state === "success" && plan && (
+        <>
+          <div className="mt-10">
+            <WeeklyPlanBoard plan={plan} />
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {plan.days.map((day) => (
+              <Link
+                key={day.name}
+                href={`/workouts/${slugify(day.name)}`}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 transition hover:border-emerald-400"
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">Log workout</p>
+                <p className="text-lg font-semibold text-white">{day.name}</p>
+                <p>{day.exercises.length} exercises</p>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }

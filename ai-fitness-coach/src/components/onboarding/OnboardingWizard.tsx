@@ -34,6 +34,8 @@ export const OnboardingWizard = () => {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoWarning, setPhotoWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleNext = (event?: FormEvent) => {
@@ -81,6 +83,8 @@ export const OnboardingWizard = () => {
 
     setPhotoPath(payload.path);
     handleChange("bodyPhoto", payload.path);
+    setPhotoPreview(payload.signedUrl ?? null);
+    setPhotoWarning(payload.warning ?? null);
     setMessage(payload.warning ?? "Photo uploaded securely.");
   };
 
@@ -180,6 +184,19 @@ export const OnboardingWizard = () => {
             if (file) handlePhotoUpload(file);
           }}
         />
+        {photoWarning && (
+          <p className="text-xs text-amber-300">{photoWarning}</p>
+        )}
+        {photoPreview && (
+          <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs text-slate-400">Latest preview</p>
+            <img
+              src={photoPreview}
+              alt="Progress preview"
+              className="mt-2 w-full rounded-xl object-cover"
+            />
+          </div>
+        )}
       </label>
     </div>
   );
